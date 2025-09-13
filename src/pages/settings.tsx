@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 import { ProviderSettingsGrid } from "@/components/ProviderSettings";
 import ConfirmationDialog from "@/components/ConfirmationDialog";
@@ -24,6 +24,7 @@ import { AutoUpdateSwitch } from "@/components/AutoUpdateSwitch";
 import { ReleaseChannelSelector } from "@/components/ReleaseChannelSelector";
 import { NeonIntegration } from "@/components/NeonIntegration";
 import { RuntimeModeSelector } from "@/components/RuntimeModeSelector";
+import { Input } from "@/components/ui/input";
 
 export default function SettingsPage() {
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
@@ -207,6 +208,30 @@ export default function SettingsPage() {
 
 export function GeneralSettings({ appVersion }: { appVersion: string | null }) {
   const { theme, setTheme } = useTheme();
+  const { settings, updateSettings } = useSettings();
+  const [patInput, setPATInput] = useState("");
+  const [isSavingPAT, setIsSavingPAT] = useState(false);
+
+  // Initialize PAT input from settings
+  useEffect(() => {
+    setPATInput(settings?.azureDevOpsPersonalAccessToken?.value || "");
+  }, [settings?.azureDevOpsPersonalAccessToken]);
+
+  const handleSavePAT = async () => {
+    setIsSavingPAT(true);
+    try {
+      await updateSettings({
+        azureDevOpsPersonalAccessToken: patInput.trim()
+          ? { value: patInput.trim() }
+          : undefined,
+      });
+    } catch (error) {
+      console.error("Error saving PAT:", error);
+      showError("Failed to save Personal Access Token");
+    } finally {
+      setIsSavingPAT(false);
+    }
+  };
 
   return (
     <div
@@ -259,6 +284,29 @@ export function GeneralSettings({ appVersion }: { appVersion: string | null }) {
 
       <div className="mt-4">
         <RuntimeModeSelector />
+      </div>
+
+      {/* Azure DevOps Personal Access Token Section */}
+      <div className="mt-4 space-y-2">
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          Azure DevOps Personal Access Token (PAT)
+        </label>
+        <div className="flex items-center gap-2">
+          <Input
+            type="password"
+            value={patInput}
+            onChange={(e) => setPATInput(e.target.value)}
+            placeholder="username:pat_token_here"
+            className="flex-grow"
+          />
+          <Button onClick={handleSavePAT} disabled={isSavingPAT} size="sm">
+            {isSavingPAT ? "Saving..." : "Save"}
+          </Button>
+        </div>
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          Used for cloning private Azure DevOps repositories. Format:
+          username:token
+        </div>
       </div>
 
       <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mt-4">
